@@ -2,8 +2,9 @@
 
 ## URL
 
-以下URLでアクセすること。
-メソッドはPOST。
+以下URLでアクセスすること。
+- メソッドはPOST。
+- `Header` の `c` に`Bearer JWTトークン`を付与すること
 
 ```txt
 [オリジン]/graphql
@@ -12,8 +13,8 @@
 ## Todo生成
 
 ```graphql
-mutation ($description: String!, $completed: Boolean!, $userId: String!) {
-  createTodo(description: $description, completed: $completed, userId: $userId) {
+mutation ($description: String!, $completed: Boolean!) {
+  createTodo(description: $description, completed: $completed) {
     id
     description
     completed
@@ -34,8 +35,8 @@ mutation ($description: String!, $completed: Boolean!, $userId: String!) {
 ## Todo更新
 
 ```graphql
-mutation ($id: String!, $description: String!, $completed: Boolean!, $userId: String!) {
-  updateTodo(id: $id, description: $description, completed: $completed, userId: $userId) {
+mutation ($id: String!, $description: String!, $completed: Boolean!) {
+  updateTodo(id: $id, description: $description, completed: $completed) {
     id
     description
     completed
@@ -72,6 +73,8 @@ mutation ($id: String!) {
 ```
 
 ## ログイン
+
+- `Header` の `Authorization` に`Bearer JWTトークン`を付与は不要。
 
 ```graphql
 mutation ($email: String!, $password: String!) {

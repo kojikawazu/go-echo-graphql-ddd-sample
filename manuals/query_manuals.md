@@ -2,8 +2,9 @@
 
 ## URL
 
-以下URLでアクセすること。
-メソッドはPOST。
+以下URLでアクセスすること。
+- メソッドはPOST。
+- `Header` の `Authorization` に`Bearer JWTトークン`を付与すること
 
 ```txt
 [オリジン]/graphql
@@ -62,19 +63,11 @@ query ($id: String!) {
 ## ユーザーIDによる取得
 
 ```graphql
-query ($userId: String!) {
-  todoByUserId(userId: $userId) {
+query {
+  todoByUserId {
     id
     description
     completed
   }
-}
-```
-
-- graphql variables
-
-```json
-{
-  "userId": ""
 }
 ```
