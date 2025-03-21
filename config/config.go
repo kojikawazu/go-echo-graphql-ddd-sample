@@ -10,7 +10,10 @@ import (
 
 // アプリケーションの設定
 type AppConfig struct {
-	TestAPI string
+	TestAPI   string
+	UserID    string
+	UserRole  string
+	JWTSecret string
 }
 
 // アプリケーションの設定のインスタンス化
@@ -60,4 +63,7 @@ func (c *AppConfig) SetUpEnv() {
 	}
 
 	c.TestAPI = os.Getenv("TEST_API")
+	c.UserID = os.Getenv("USER_ID")
+	c.UserRole = os.Getenv("ROLE_USER")
+	c.JWTSecret = os.Getenv("JWT_SECRET")
 }

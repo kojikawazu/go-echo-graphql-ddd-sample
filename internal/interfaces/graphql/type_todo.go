@@ -12,3 +12,12 @@ var todoType = graphql.NewObject(graphql.ObjectConfig{
 		"userId":      &graphql.Field{Type: graphql.String},
 	},
 })
+
+// DeleteTodoPayload型
+var deleteTodoPayload = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DeleteTodoPayload",
+	Fields: graphql.Fields{
+		"success": &graphql.Field{Type: graphql.Boolean},
+		"message": &graphql.Field{Type: graphql.String},
+	},
+})
