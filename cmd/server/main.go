@@ -22,7 +22,7 @@ import (
 )
 
 // main関数のセットアップ
-func setUp(e *echo.Echo, l *pkg_logger.AppLogger, sc *pkg_supabase.SupabaseClient) {
+func setUp(e *echo.Echo, ac *config.AppConfig, l *pkg_logger.AppLogger, sc *pkg_supabase.SupabaseClient) {
 	// Supabaseの接続
 	err := sc.InitSupabase(l)
 	if err != nil {
@@ -44,12 +44,12 @@ func setUp(e *echo.Echo, l *pkg_logger.AppLogger, sc *pkg_supabase.SupabaseClien
 	todoUsecase := usecase_todo.NewTodoUsecase(l, todoRepository)
 	authUsecase := usecase_auth.NewAuthUsecase(l, authRepository)
 	// handler
-	authHandler := interfaces_auth.NewAuthHandler(l)
+	authHandler := interfaces_auth.NewAuthHandler(ac, l)
 	// graphql
 	graphqlHandler := interfaces_graphql.NewGraphQLHandler(l, userUsecase, todoUsecase, authUsecase, authHandler)
 
 	// router
-	router.SetUpRouter(e, l, graphqlHandler)
+	router.SetUpRouter(e, l, ac, graphqlHandler, authHandler)
 }
 
 // アプリケーションのメイン関数
@@ -69,7 +69,7 @@ func main() {
 	e := echo.New()
 
 	// セットアップ
-	setUp(e, logger, supabaseClient)
+	setUp(e, appConfig, logger, supabaseClient)
 
 	// シグナルハンドラーの設定
 	quit := make(chan os.Signal, 1)

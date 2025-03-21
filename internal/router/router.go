@@ -1,6 +1,8 @@
 package router
 
 import (
+	"backend/config"
+	interfaces_auth "backend/internal/interfaces/auth"
 	interfaces_graphql "backend/internal/interfaces/graphql"
 	pkg_logger "backend/internal/pkg/logger"
 	"net/http"
@@ -10,7 +12,7 @@ import (
 )
 
 // ルーティングの設定
-func SetUpRouter(e *echo.Echo, l *pkg_logger.AppLogger, graphqlHandler *interfaces_graphql.GraphQLHandler) {
+func SetUpRouter(e *echo.Echo, l *pkg_logger.AppLogger, conf *config.AppConfig, gh *interfaces_graphql.GraphQLHandler, ah *interfaces_auth.AuthHandler) {
 	l.InfoLog.Println("Setting up router...")
 
 	// GraphQLのルーティング
@@ -26,11 +28,14 @@ func SetUpRouter(e *echo.Echo, l *pkg_logger.AppLogger, graphqlHandler *interfac
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid GraphQL query"})
 		}
 
+		// トークンを取得
+		changedCtx, _ := ah.ParseAndAuthorizeToken(c, conf.UserRole)
+
 		// GraphQLの実行
 		result := graphql.Do(graphql.Params{
-			Schema:         graphqlHandler.GetSchema(),
+			Schema:         gh.GetSchema(),
 			RequestString:  body.Query,
-			Context:        c.Request().Context(),
+			Context:        changedCtx,
 			VariableValues: body.Variables,
 		})
 

@@ -7,6 +7,7 @@ import (
 	usecase_auth "backend/internal/usecase/auth"
 	usecase_todo "backend/internal/usecase/todo"
 	usecase_user "backend/internal/usecase/user"
+	"errors"
 
 	"github.com/graphql-go/graphql"
 )
@@ -41,6 +42,12 @@ func (r *GraphQLHandler) BuildRootQuery() *graphql.Object {
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					r.Logger.InfoLog.Println("Fetching users...")
 
+					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					if !ok || userId == "" {
+						r.Logger.ErrorLog.Println("unauthorized")
+						return nil, errors.New("unauthorized")
+					}
+
 					users, err := r.userUsecase.GetAllUsers()
 					if err != nil {
 						r.Logger.ErrorLog.Printf("Failed to get all users: %v", err)
@@ -64,6 +71,12 @@ func (r *GraphQLHandler) BuildRootQuery() *graphql.Object {
 				Type: graphql.NewList(todoType),
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					r.Logger.InfoLog.Println("Fetching todos...")
+
+					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					if !ok || userId == "" {
+						r.Logger.ErrorLog.Println("unauthorized")
+						return nil, errors.New("unauthorized")
+					}
 
 					todos, err := r.todoUsecase.GetAllTodos()
 					if err != nil {
@@ -89,6 +102,12 @@ func (r *GraphQLHandler) BuildRootQuery() *graphql.Object {
 				Args: graphql.FieldConfigArgument{"id": &graphql.ArgumentConfig{Type: graphql.String}},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					r.Logger.InfoLog.Println("Fetching todo by id...")
+
+					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					if !ok || userId == "" {
+						r.Logger.ErrorLog.Println("unauthorized")
+						return nil, errors.New("unauthorized")
+					}
 
 					id := p.Args["id"].(string)
 					r.Logger.InfoLog.Printf("Fetching todo by id: %s", id)
@@ -116,11 +135,15 @@ func (r *GraphQLHandler) BuildRootQuery() *graphql.Object {
 			},
 			"todoByUserId": &graphql.Field{
 				Type: graphql.NewList(todoType),
-				Args: graphql.FieldConfigArgument{"userId": &graphql.ArgumentConfig{Type: graphql.String}},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					r.Logger.InfoLog.Println("Fetching todo by user id...")
 
-					userId := p.Args["userId"].(string)
+					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					if !ok || userId == "" {
+						r.Logger.ErrorLog.Println("unauthorized")
+						return nil, errors.New("unauthorized")
+					}
+
 					todos, err := r.todoUsecase.GetTodoByUserId(userId)
 					if err != nil {
 						switch err.Error() {
@@ -162,14 +185,18 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 				Args: graphql.FieldConfigArgument{
 					"description": &graphql.ArgumentConfig{Type: graphql.String},
 					"completed":   &graphql.ArgumentConfig{Type: graphql.Boolean},
-					"userId":      &graphql.ArgumentConfig{Type: graphql.String},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					r.Logger.InfoLog.Println("Creating todo...")
 
+					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					if !ok || userId == "" {
+						r.Logger.ErrorLog.Println("unauthorized")
+						return nil, errors.New("unauthorized")
+					}
+
 					description := p.Args["description"].(string)
 					completed := p.Args["completed"].(bool)
-					userId := p.Args["userId"].(string)
 
 					todo := domain_todo.Todo{
 						Description: description,
@@ -206,15 +233,19 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 					"id":          &graphql.ArgumentConfig{Type: graphql.String},
 					"description": &graphql.ArgumentConfig{Type: graphql.String},
 					"completed":   &graphql.ArgumentConfig{Type: graphql.Boolean},
-					"userId":      &graphql.ArgumentConfig{Type: graphql.String},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					r.Logger.InfoLog.Println("Updating todo...")
 
+					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					if !ok || userId == "" {
+						r.Logger.ErrorLog.Println("unauthorized")
+						return nil, errors.New("unauthorized")
+					}
+
 					id := p.Args["id"].(string)
 					description := p.Args["description"].(string)
 					completed := p.Args["completed"].(bool)
-					userId := p.Args["userId"].(string)
 
 					r.Logger.InfoLog.Printf("Updating todo by id: %s", id)
 					todo, err := r.todoUsecase.UpdateTodo(domain_todo.Todo{
@@ -253,10 +284,16 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 				},
 			},
 			"deleteTodo": &graphql.Field{
-				Type: graphql.Boolean,
+				Type: deleteTodoPayload,
 				Args: graphql.FieldConfigArgument{"id": &graphql.ArgumentConfig{Type: graphql.String}},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					r.Logger.InfoLog.Println("Deleting todo...")
+
+					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					if !ok || userId == "" {
+						r.Logger.ErrorLog.Println("unauthorized")
+						return nil, errors.New("unauthorized")
+					}
 
 					id := p.Args["id"].(string)
 					err := r.todoUsecase.DeleteTodo(id)
@@ -271,11 +308,14 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 						}
 					}
 
-					return true, nil
+					return map[string]interface{}{
+						"success": true,
+						"message": "Todo deleted successfully",
+					}, nil
 				},
 			},
 			"login": &graphql.Field{
-				Type: graphql.String,
+				Type: loginPayload,
 				Args: graphql.FieldConfigArgument{
 					"email":    &graphql.ArgumentConfig{Type: graphql.String},
 					"password": &graphql.ArgumentConfig{Type: graphql.String},
@@ -309,7 +349,9 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 					}
 
 					r.Logger.InfoLog.Printf("Logged in: %v", tokenString != "")
-					return tokenString, nil
+					return map[string]interface{}{
+						"token": tokenString,
+					}, nil
 				},
 			},
 		},
