@@ -4,6 +4,7 @@ import (
 	domain_todo "backend/internal/domain/todo"
 	interfaces_auth "backend/internal/interfaces/auth"
 	pkg_logger "backend/internal/pkg/logger"
+	pkg_timer "backend/internal/pkg/timer"
 	usecase_auth "backend/internal/usecase/auth"
 	usecase_todo "backend/internal/usecase/todo"
 	usecase_user "backend/internal/usecase/user"
@@ -15,6 +16,7 @@ import (
 // GraphQLハンドラ(Impl)
 type GraphQLHandler struct {
 	Logger      *pkg_logger.AppLogger
+	timer       *pkg_timer.TimerPkg
 	userUsecase usecase_user.IUserUsecase
 	todoUsecase usecase_todo.ITodoUsecase
 	authUsecase usecase_auth.IAuthUsecase
@@ -29,28 +31,32 @@ func NewGraphQLHandler(l *pkg_logger.AppLogger, uu usecase_user.IUserUsecase, tu
 		todoUsecase: tu,
 		authUsecase: au,
 		authHandler: ah,
+		timer:       pkg_timer.NewTimerPkg(),
 	}
 }
 
 // ルートクエリを構築
-func (r *GraphQLHandler) BuildRootQuery() *graphql.Object {
+func (h *GraphQLHandler) BuildRootQuery() *graphql.Object {
 	rootQuery := graphql.NewObject(graphql.ObjectConfig{
 		Name: "Query",
 		Fields: graphql.Fields{
 			"users": &graphql.Field{
 				Type: graphql.NewList(userType),
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					r.Logger.InfoLog.Println("Fetching users...")
+					h.Logger.InfoLog.Println("Fetching users...")
+					h.timer.Start()
 
-					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					userId, ok := p.Context.Value(h.authHandler.AppConfig.UserID).(string)
 					if !ok || userId == "" {
-						r.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.PrintDuration("Fetching users", h.timer.GetDuration())
 						return nil, errors.New("unauthorized")
 					}
 
-					users, err := r.userUsecase.GetAllUsers()
+					users, err := h.userUsecase.GetAllUsers()
 					if err != nil {
-						r.Logger.ErrorLog.Printf("Failed to get all users: %v", err)
+						h.Logger.ErrorLog.Printf("Failed to get all users: %v", err)
+						h.Logger.PrintDuration("Fetching users", h.timer.GetDuration())
 						return nil, err
 					}
 
@@ -63,24 +69,28 @@ func (r *GraphQLHandler) BuildRootQuery() *graphql.Object {
 						})
 					}
 
-					r.Logger.InfoLog.Printf("Fetched %d users", len(result))
+					h.Logger.InfoLog.Printf("Fetched %d users", len(result))
+					h.Logger.PrintDuration("Fetching users", h.timer.GetDuration())
 					return result, nil
 				},
 			},
 			"todos": &graphql.Field{
 				Type: graphql.NewList(todoType),
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					r.Logger.InfoLog.Println("Fetching todos...")
+					h.Logger.InfoLog.Println("Fetching todos...")
+					h.timer.Start()
 
-					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					userId, ok := p.Context.Value(h.authHandler.AppConfig.UserID).(string)
 					if !ok || userId == "" {
-						r.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.PrintDuration("Fetching todos", h.timer.GetDuration())
 						return nil, errors.New("unauthorized")
 					}
 
-					todos, err := r.todoUsecase.GetAllTodos()
+					todos, err := h.todoUsecase.GetAllTodos()
 					if err != nil {
-						r.Logger.ErrorLog.Printf("Failed to get all todos: %v", err)
+						h.Logger.ErrorLog.Printf("Failed to get all todos: %v", err)
+						h.Logger.PrintDuration("Fetching todos", h.timer.GetDuration())
 						return nil, err
 					}
 
@@ -93,7 +103,8 @@ func (r *GraphQLHandler) BuildRootQuery() *graphql.Object {
 						})
 					}
 
-					r.Logger.InfoLog.Printf("Fetched %d todos", len(result))
+					h.Logger.InfoLog.Printf("Fetched %d todos", len(result))
+					h.Logger.PrintDuration("Fetching todos", h.timer.GetDuration())
 					return result, nil
 				},
 			},
@@ -101,24 +112,28 @@ func (r *GraphQLHandler) BuildRootQuery() *graphql.Object {
 				Type: todoType,
 				Args: graphql.FieldConfigArgument{"id": &graphql.ArgumentConfig{Type: graphql.String}},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					r.Logger.InfoLog.Println("Fetching todo by id...")
+					h.Logger.InfoLog.Println("Fetching todo by id...")
+					h.timer.Start()
 
-					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					userId, ok := p.Context.Value(h.authHandler.AppConfig.UserID).(string)
 					if !ok || userId == "" {
-						r.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.PrintDuration("Fetching todo by id", h.timer.GetDuration())
 						return nil, errors.New("unauthorized")
 					}
 
 					id := p.Args["id"].(string)
-					r.Logger.InfoLog.Printf("Fetching todo by id: %s", id)
-					todo, err := r.todoUsecase.GetTodoById(id)
+					h.Logger.InfoLog.Printf("Fetching todo by id: %s", id)
+					todo, err := h.todoUsecase.GetTodoById(id)
 					if err != nil {
 						switch err.Error() {
 						case "id is empty":
-							r.Logger.ErrorLog.Printf("Todo not found: %v", err)
+							h.Logger.ErrorLog.Printf("Todo not found: %v", err)
+							h.Logger.PrintDuration("Fetching todo by id", h.timer.GetDuration())
 							return nil, err
 						default:
-							r.Logger.ErrorLog.Printf("Failed to get todo by id: %v", err)
+							h.Logger.ErrorLog.Printf("Failed to get todo by id: %v", err)
+							h.Logger.PrintDuration("Fetching todo by id", h.timer.GetDuration())
 							return nil, err
 						}
 					}
@@ -129,29 +144,34 @@ func (r *GraphQLHandler) BuildRootQuery() *graphql.Object {
 						"completed":   todo.Completed,
 					}
 
-					r.Logger.InfoLog.Printf("Fetched todo: %v", result != nil)
+					h.Logger.InfoLog.Printf("Fetched todo: %v", result != nil)
+					h.Logger.PrintDuration("Fetching todo by id", h.timer.GetDuration())
 					return result, nil
 				},
 			},
 			"todoByUserId": &graphql.Field{
 				Type: graphql.NewList(todoType),
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					r.Logger.InfoLog.Println("Fetching todo by user id...")
+					h.Logger.InfoLog.Println("Fetching todo by user id...")
+					h.timer.Start()
 
-					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					userId, ok := p.Context.Value(h.authHandler.AppConfig.UserID).(string)
 					if !ok || userId == "" {
-						r.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.PrintDuration("Fetching todo by user id", h.timer.GetDuration())
 						return nil, errors.New("unauthorized")
 					}
 
-					todos, err := r.todoUsecase.GetTodoByUserId(userId)
+					todos, err := h.todoUsecase.GetTodoByUserId(userId)
 					if err != nil {
 						switch err.Error() {
 						case "user_id is empty":
-							r.Logger.ErrorLog.Printf("User id is empty: %v", err)
+							h.Logger.ErrorLog.Printf("User id is empty: %v", err)
+							h.Logger.PrintDuration("Fetching todo by user id", h.timer.GetDuration())
 							return nil, err
 						default:
-							r.Logger.ErrorLog.Printf("Failed to get todo by user id: %v", err)
+							h.Logger.ErrorLog.Printf("Failed to get todo by user id: %v", err)
+							h.Logger.PrintDuration("Fetching todo by user id", h.timer.GetDuration())
 							return nil, err
 						}
 					}
@@ -165,7 +185,8 @@ func (r *GraphQLHandler) BuildRootQuery() *graphql.Object {
 						})
 					}
 
-					r.Logger.InfoLog.Printf("Fetched %d todos", len(result))
+					h.Logger.InfoLog.Printf("Fetched %d todos", len(result))
+					h.Logger.PrintDuration("Fetching todo by user id", h.timer.GetDuration())
 					return result, nil
 				},
 			},
@@ -176,7 +197,7 @@ func (r *GraphQLHandler) BuildRootQuery() *graphql.Object {
 }
 
 // ルートミューテーションを構築
-func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
+func (h *GraphQLHandler) BuildRootMutation() *graphql.Object {
 	rootMutation := graphql.NewObject(graphql.ObjectConfig{
 		Name: "Mutation",
 		Fields: graphql.Fields{
@@ -187,11 +208,13 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 					"completed":   &graphql.ArgumentConfig{Type: graphql.Boolean},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					r.Logger.InfoLog.Println("Creating todo...")
+					h.Logger.InfoLog.Println("Creating todo...")
+					h.timer.Start()
 
-					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					userId, ok := p.Context.Value(h.authHandler.AppConfig.UserID).(string)
 					if !ok || userId == "" {
-						r.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.PrintDuration("Creating todo", h.timer.GetDuration())
 						return nil, errors.New("unauthorized")
 					}
 
@@ -204,17 +227,19 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 						UserId:      userId,
 					}
 
-					createdTodo, err := r.todoUsecase.CreateTodo(todo)
+					createdTodo, err := h.todoUsecase.CreateTodo(todo)
 					if err != nil {
 						switch err.Error() {
 						case "description is empty":
-							r.Logger.ErrorLog.Printf("Description is empty: %v", err)
+							h.Logger.ErrorLog.Printf("Description is empty: %v", err)
 							return nil, err
 						case "user_id is empty":
-							r.Logger.ErrorLog.Printf("User id is empty: %v", err)
+							h.Logger.ErrorLog.Printf("User id is empty: %v", err)
+							h.Logger.PrintDuration("Creating todo", h.timer.GetDuration())
 							return nil, err
 						default:
-							r.Logger.ErrorLog.Printf("Failed to create todo: %v", err)
+							h.Logger.ErrorLog.Printf("Failed to create todo: %v", err)
+							h.Logger.PrintDuration("Creating todo", h.timer.GetDuration())
 							return nil, err
 						}
 					}
@@ -235,11 +260,13 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 					"completed":   &graphql.ArgumentConfig{Type: graphql.Boolean},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					r.Logger.InfoLog.Println("Updating todo...")
+					h.Logger.InfoLog.Println("Updating todo...")
+					h.timer.Start()
 
-					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					userId, ok := p.Context.Value(h.authHandler.AppConfig.UserID).(string)
 					if !ok || userId == "" {
-						r.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.PrintDuration("Updating todo", h.timer.GetDuration())
 						return nil, errors.New("unauthorized")
 					}
 
@@ -247,8 +274,8 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 					description := p.Args["description"].(string)
 					completed := p.Args["completed"].(bool)
 
-					r.Logger.InfoLog.Printf("Updating todo by id: %s", id)
-					todo, err := r.todoUsecase.UpdateTodo(domain_todo.Todo{
+					h.Logger.InfoLog.Printf("Updating todo by id: %s", id)
+					todo, err := h.todoUsecase.UpdateTodo(domain_todo.Todo{
 						ID:          id,
 						Description: description,
 						Completed:   completed,
@@ -258,16 +285,20 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 					if err != nil {
 						switch err.Error() {
 						case "id is empty":
-							r.Logger.ErrorLog.Printf("Todo not found: %v", err)
+							h.Logger.ErrorLog.Printf("Todo not found: %v", err)
+							h.Logger.PrintDuration("Updating todo", h.timer.GetDuration())
 							return nil, err
 						case "description is empty":
-							r.Logger.ErrorLog.Printf("Description is empty: %v", err)
+							h.Logger.ErrorLog.Printf("Description is empty: %v", err)
+							h.Logger.PrintDuration("Updating todo", h.timer.GetDuration())
 							return nil, err
 						case "user_id is empty":
-							r.Logger.ErrorLog.Printf("User id is empty: %v", err)
+							h.Logger.ErrorLog.Printf("User id is empty: %v", err)
+							h.Logger.PrintDuration("Updating todo", h.timer.GetDuration())
 							return nil, err
 						default:
-							r.Logger.ErrorLog.Printf("Failed to get todo by id: %v", err)
+							h.Logger.ErrorLog.Printf("Failed to get todo by id: %v", err)
+							h.Logger.PrintDuration("Updating todo", h.timer.GetDuration())
 							return nil, err
 						}
 					}
@@ -279,7 +310,8 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 						"userId":      todo.UserId,
 					}
 
-					r.Logger.InfoLog.Printf("Updated todo: %v", result != nil)
+					h.Logger.InfoLog.Printf("Updated todo: %v", result != nil)
+					h.Logger.PrintDuration("Updating todo", h.timer.GetDuration())
 					return result, nil
 				},
 			},
@@ -287,27 +319,33 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 				Type: deleteTodoPayload,
 				Args: graphql.FieldConfigArgument{"id": &graphql.ArgumentConfig{Type: graphql.String}},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					r.Logger.InfoLog.Println("Deleting todo...")
+					h.Logger.InfoLog.Println("Deleting todo...")
+					h.timer.Start()
 
-					userId, ok := p.Context.Value(r.authHandler.AppConfig.UserID).(string)
+					userId, ok := p.Context.Value(h.authHandler.AppConfig.UserID).(string)
 					if !ok || userId == "" {
-						r.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.ErrorLog.Println("unauthorized")
+						h.Logger.PrintDuration("Deleting todo", h.timer.GetDuration())
 						return nil, errors.New("unauthorized")
 					}
 
 					id := p.Args["id"].(string)
-					err := r.todoUsecase.DeleteTodo(id)
+					err := h.todoUsecase.DeleteTodo(id)
 					if err != nil {
 						switch err.Error() {
 						case "id is empty":
-							r.Logger.ErrorLog.Printf("Todo not found: %v", err)
+							h.Logger.ErrorLog.Printf("Todo not found: %v", err)
+							h.Logger.PrintDuration("Deleting todo", h.timer.GetDuration())
 							return nil, err
 						default:
-							r.Logger.ErrorLog.Printf("Failed to delete todo: %v", err)
+							h.Logger.ErrorLog.Printf("Failed to delete todo: %v", err)
+							h.Logger.PrintDuration("Deleting todo", h.timer.GetDuration())
 							return nil, err
 						}
 					}
 
+					h.Logger.InfoLog.Println("Todo deleted successfully")
+					h.Logger.PrintDuration("Deleting todo", h.timer.GetDuration())
 					return map[string]interface{}{
 						"success": true,
 						"message": "Todo deleted successfully",
@@ -321,34 +359,40 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 					"password": &graphql.ArgumentConfig{Type: graphql.String},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					r.Logger.InfoLog.Println("Logging in...")
+					h.Logger.InfoLog.Println("Logging in...")
+					h.timer.Start()
 
 					email := p.Args["email"].(string)
 					password := p.Args["password"].(string)
 
-					token, err := r.authUsecase.Login(email, password)
+					token, err := h.authUsecase.Login(email, password)
 					if err != nil {
 						switch err.Error() {
 						case "invalid email or password":
-							r.Logger.ErrorLog.Printf("Invalid email or password: %v", err)
+							h.Logger.ErrorLog.Printf("Invalid email or password: %v", err)
+							h.Logger.PrintDuration("Logging in", h.timer.GetDuration())
 							return nil, err
 						case "invalid email format":
-							r.Logger.ErrorLog.Printf("Invalid email format: %v", err)
+							h.Logger.ErrorLog.Printf("Invalid email format: %v", err)
+							h.Logger.PrintDuration("Logging in", h.timer.GetDuration())
 							return nil, err
 						default:
-							r.Logger.ErrorLog.Printf("Failed to login: %v", err)
+							h.Logger.ErrorLog.Printf("Failed to login: %v", err)
+							h.Logger.PrintDuration("Logging in", h.timer.GetDuration())
 							return nil, err
 						}
 					}
 
 					// JWTトークンを生成
-					tokenString, err := r.authHandler.GenerateToken(token)
+					tokenString, err := h.authHandler.GenerateToken(token)
 					if err != nil {
-						r.Logger.ErrorLog.Printf("Failed to generate token: %v", err)
+						h.Logger.ErrorLog.Printf("Failed to generate token: %v", err)
+						h.Logger.PrintDuration("Logging in", h.timer.GetDuration())
 						return nil, err
 					}
 
-					r.Logger.InfoLog.Printf("Logged in: %v", tokenString != "")
+					h.Logger.InfoLog.Printf("Logged in: %v", tokenString != "")
+					h.Logger.PrintDuration("Logging in", h.timer.GetDuration())
 					return map[string]interface{}{
 						"token": tokenString,
 					}, nil
@@ -361,10 +405,10 @@ func (r *GraphQLHandler) BuildRootMutation() *graphql.Object {
 }
 
 // スキーマを構築
-func (r *GraphQLHandler) GetSchema() graphql.Schema {
+func (h *GraphQLHandler) GetSchema() graphql.Schema {
 	schema, _ := graphql.NewSchema(graphql.SchemaConfig{
-		Query:    r.BuildRootQuery(),
-		Mutation: r.BuildRootMutation(),
+		Query:    h.BuildRootQuery(),
+		Mutation: h.BuildRootMutation(),
 	})
 
 	return schema
