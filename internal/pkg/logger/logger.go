@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 )
 
 // アプリケーションロガー
@@ -34,4 +35,9 @@ func (l *AppLogger) SetUpLogger() {
 		l.WarnLog.SetOutput(io.Discard)
 		l.DebugLog.SetOutput(io.Discard)
 	}
+}
+
+// 実行時間をログに出力
+func (l *AppLogger) PrintDuration(str string, duration time.Duration) {
+	l.InfoLog.Printf("%s duration: %v", str, duration)
 }
