@@ -3,6 +3,7 @@ package usecase_user
 import (
 	domain_user "backend/internal/domain/user"
 	pkg_logger "backend/internal/pkg/logger"
+	repository_user "backend/internal/repository/user"
 )
 
 // ユーザーユースケース(IF)
@@ -14,11 +15,11 @@ type IUserUsecase interface {
 // ユーザーユースケース(Impl)
 type UserUsecase struct {
 	Logger         *pkg_logger.AppLogger
-	userRepository domain_user.IUserRepository
+	userRepository repository_user.IUserRepository
 }
 
 // ユーザーユースケースのインスタンス化
-func NewUserUsecase(l *pkg_logger.AppLogger, u domain_user.IUserRepository) IUserUsecase {
+func NewUserUsecase(l *pkg_logger.AppLogger, u repository_user.IUserRepository) IUserUsecase {
 	return &UserUsecase{
 		Logger:         l,
 		userRepository: u,

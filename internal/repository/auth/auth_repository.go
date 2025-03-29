@@ -1,4 +1,4 @@
-package domain_auth
+package repository_auth
 
 // 認証リポジトリ(IF)
 type IAuthRepository interface {

@@ -4,6 +4,7 @@ import (
 	domain_user "backend/internal/domain/user"
 	pkg_logger "backend/internal/pkg/logger"
 	pkg_supabase "backend/internal/pkg/supabase"
+	repository_user "backend/internal/repository/user"
 )
 
 // ユーザーリポジトリ(Impl)
@@ -13,7 +14,7 @@ type UserRepositoryImpl struct {
 }
 
 // ユーザーリポジトリのインスタンス化
-func NewUserRepository(l *pkg_logger.AppLogger, sc *pkg_supabase.SupabaseClient) domain_user.IUserRepository {
+func NewUserRepository(l *pkg_logger.AppLogger, sc *pkg_supabase.SupabaseClient) repository_user.IUserRepository {
 	return &UserRepositoryImpl{
 		Logger:         l,
 		SupabaseClient: sc,

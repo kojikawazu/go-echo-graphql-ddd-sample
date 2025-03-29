@@ -1,8 +1,8 @@
 package usecase_auth
 
 import (
-	domain_auth "backend/internal/domain/auth"
 	pkg_logger "backend/internal/pkg/logger"
+	repository_auth "backend/internal/repository/auth"
 	"errors"
 	"regexp"
 )
@@ -16,11 +16,11 @@ type IAuthUsecase interface {
 // 認証ユースケース(Impl)
 type AuthUsecase struct {
 	Logger         *pkg_logger.AppLogger
-	authRepository domain_auth.IAuthRepository
+	authRepository repository_auth.IAuthRepository
 }
 
 // 認証ユースケースのインスタンス化
-func NewAuthUsecase(l *pkg_logger.AppLogger, ar domain_auth.IAuthRepository) IAuthUsecase {
+func NewAuthUsecase(l *pkg_logger.AppLogger, ar repository_auth.IAuthRepository) IAuthUsecase {
 	return &AuthUsecase{
 		Logger:         l,
 		authRepository: ar,

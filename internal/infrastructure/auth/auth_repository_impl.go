@@ -1,10 +1,10 @@
 package infrastructure_auth
 
 import (
-	domain_auth "backend/internal/domain/auth"
 	domain_user "backend/internal/domain/user"
 	pkg_logger "backend/internal/pkg/logger"
 	pkg_supabase "backend/internal/pkg/supabase"
+	repository_auth "backend/internal/repository/auth"
 )
 
 // 認証リポジトリの実装(Impl)
@@ -14,7 +14,7 @@ type AuthRepositoryImpl struct {
 }
 
 // 認証リポジトリのインスタンス化
-func NewAuthRepository(l *pkg_logger.AppLogger, sc *pkg_supabase.SupabaseClient) domain_auth.IAuthRepository {
+func NewAuthRepository(l *pkg_logger.AppLogger, sc *pkg_supabase.SupabaseClient) repository_auth.IAuthRepository {
 	return &AuthRepositoryImpl{
 		Logger:         l,
 		SupabaseClient: sc,
