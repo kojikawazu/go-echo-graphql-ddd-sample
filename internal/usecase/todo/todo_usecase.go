@@ -3,6 +3,7 @@ package usecase_todo
 import (
 	domain_todo "backend/internal/domain/todo"
 	pkg_logger "backend/internal/pkg/logger"
+	repository_todo "backend/internal/repository/todo"
 	"errors"
 )
 
@@ -25,11 +26,11 @@ type ITodoUsecase interface {
 // Todoユースケース(Impl)
 type TodoUsecase struct {
 	Logger         *pkg_logger.AppLogger
-	todoRepository domain_todo.ITodoRepository
+	todoRepository repository_todo.ITodoRepository
 }
 
 // Todoユースケースのインスタンス化
-func NewTodoUsecase(l *pkg_logger.AppLogger, tr domain_todo.ITodoRepository) ITodoUsecase {
+func NewTodoUsecase(l *pkg_logger.AppLogger, tr repository_todo.ITodoRepository) ITodoUsecase {
 	return &TodoUsecase{
 		Logger:         l,
 		todoRepository: tr,

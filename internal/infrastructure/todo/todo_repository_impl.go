@@ -4,6 +4,7 @@ import (
 	domain_todo "backend/internal/domain/todo"
 	pkg_logger "backend/internal/pkg/logger"
 	pkg_supabase "backend/internal/pkg/supabase"
+	repository_todo "backend/internal/repository/todo"
 )
 
 // Todoリポジトリ(Impl)
@@ -13,7 +14,7 @@ type TodoRepositoryImpl struct {
 }
 
 // Todoリポジトリのインスタンス化
-func NewTodoRepository(l *pkg_logger.AppLogger, sc *pkg_supabase.SupabaseClient) domain_todo.ITodoRepository {
+func NewTodoRepository(l *pkg_logger.AppLogger, sc *pkg_supabase.SupabaseClient) repository_todo.ITodoRepository {
 	return &TodoRepositoryImpl{
 		Logger:         l,
 		SupabaseClient: sc,
